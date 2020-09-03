@@ -1,0 +1,2 @@
+0:0:0:0:0:0:0:1 - - [13/Jan/2020:18:33:22 +0800] "GET /transferServlet HTTP/1.1" 500 5277 http-bio-8080-exec-1 513
+0:0:0:0:0:0:0:1 - - [13/Jan/2020:18:33:22 +0800] "GET /favicon.ico HTTP/1.1" 404 973 http-bio-8080-exec-2 13
