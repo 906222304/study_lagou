@@ -1,10 +1,6 @@
 package com.lagou.edu.mvcframework.servlet;
 
-import com.lagou.demo.service.IDemoService;
-import com.lagou.edu.mvcframework.annotations.LagouAutowired;
-import com.lagou.edu.mvcframework.annotations.LagouController;
-import com.lagou.edu.mvcframework.annotations.LagouRequestMapping;
-import com.lagou.edu.mvcframework.annotations.LagouService;
+import com.lagou.edu.mvcframework.annotations.*;
 import com.lagou.edu.mvcframework.pojo.Handler;
 import org.apache.commons.lang3.StringUtils;
 
@@ -34,6 +30,8 @@ public class LgDispatcherServlet extends HttpServlet {
     // ioc容器
     private Map<String,Object> ioc = new HashMap<String,Object>();
 
+    // 存储security相关参数
+    private List<String[]> securityList = new ArrayList<>();
 
     // handlerMapping
     //private Map<String,Method> handlerMapping = now HashMap<>(); // 存储url和Method之间的映射关系
@@ -58,10 +56,47 @@ public class LgDispatcherServlet extends HttpServlet {
         // 5 构造一个HandlerMapping处理器映射器，将配置好的url和Method建立映射关系
         initHandlerMapping();
 
+        // 6 增加security的校验
+//        initSecurity(ioc, handlerMapping);
+
         System.out.println("lagou mvc 初始化完成....");
 
         // 等待请求进入，处理请求
     }
+
+    /**
+     * 增加扫描security
+     * @param ioc
+     * @param handlerMapping
+     */
+    private void initSecurity(Map<String, Object> ioc, List<Handler> handlerMapping) {
+        if (ioc.isEmpty()) {
+            return;
+        }
+
+        for (Map.Entry<String, Object> objectEntry : ioc.entrySet()) {
+            // 获取ioc中当前遍历的对象的class类型
+            Class<?> sClass = objectEntry.getValue().getClass();
+            if (!sClass.isAnnotationPresent(Security.class)) {
+                continue;
+            }
+            if (sClass.isAnnotationPresent(Security.class)) {
+                Security security = sClass.getAnnotation(Security.class);
+                String[] value = security.value();
+            }
+            Method[] methods = sClass.getMethods();
+            for (Method method : methods) {
+                if (method.isAnnotationPresent(Security.class)) {
+                    continue;
+                }
+                Security securityMethod = sClass.getAnnotation(Security.class);
+                String[] methodValues = securityMethod.value();
+
+            }
+        }
+
+    }
+
 
     /*
         构造一个HandlerMapping处理器映射器
@@ -83,6 +118,7 @@ public class LgDispatcherServlet extends HttpServlet {
             if(aClass.isAnnotationPresent(LagouRequestMapping.class)) {
                 LagouRequestMapping annotation = aClass.getAnnotation(LagouRequestMapping.class);
                 baseUrl = annotation.value(); // 等同于/demo
+                
             }
 
 
@@ -187,7 +223,7 @@ public class LgDispatcherServlet extends HttpServlet {
 
                 // 反射
                 Class<?> aClass = Class.forName(className);
-                // 区分controller，区分service'
+                // 区分controller，区分service
                 if(aClass.isAnnotationPresent(LagouController.class)) {
                     // controller的id此处不做过多处理，不取value了，就拿类的首字母小写作为id，保存到ioc中
                     String simpleName = aClass.getSimpleName();// DemoController
