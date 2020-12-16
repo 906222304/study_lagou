@@ -31,7 +31,8 @@ public class LgDispatcherServlet extends HttpServlet {
     private Map<String,Object> ioc = new HashMap<String,Object>();
 
     // 存储security相关参数
-    private List<String[]> securityList = new ArrayList<>();
+    // private List<String[]> securityList = new ArrayList<>();
+    private Map<Pattern, String[]> securityMap = new HashMap<>();
 
     // handlerMapping
     //private Map<String,Method> handlerMapping = now HashMap<>(); // 存储url和Method之间的映射关系
@@ -57,7 +58,7 @@ public class LgDispatcherServlet extends HttpServlet {
         initHandlerMapping();
 
         // 6 增加security的校验
-//        initSecurity(ioc, handlerMapping);
+        initSecurity(ioc, handlerMapping);
 
         System.out.println("lagou mvc 初始化完成....");
 
@@ -70,27 +71,34 @@ public class LgDispatcherServlet extends HttpServlet {
      * @param handlerMapping
      */
     private void initSecurity(Map<String, Object> ioc, List<Handler> handlerMapping) {
+
         if (ioc.isEmpty()) {
             return;
         }
 
+        String baseUrl = "";
         for (Map.Entry<String, Object> objectEntry : ioc.entrySet()) {
             // 获取ioc中当前遍历的对象的class类型
             Class<?> sClass = objectEntry.getValue().getClass();
-            if (!sClass.isAnnotationPresent(Security.class)) {
+            if (!sClass.isAnnotationPresent(Security.class) && !sClass.isAnnotationPresent(LagouRequestMapping.class)) {
                 continue;
             }
-            if (sClass.isAnnotationPresent(Security.class)) {
+            if (sClass.isAnnotationPresent(Security.class) && sClass.isAnnotationPresent(LagouRequestMapping.class)) {
                 Security security = sClass.getAnnotation(Security.class);
                 String[] value = security.value();
+                baseUrl = sClass.getAnnotation(LagouRequestMapping.class).value();
+                securityMap.put(Pattern.compile(baseUrl), value);
             }
             Method[] methods = sClass.getMethods();
             for (Method method : methods) {
-                if (method.isAnnotationPresent(Security.class)) {
+                if (!method.isAnnotationPresent(Security.class) && !method.isAnnotationPresent(LagouRequestMapping.class)) {
                     continue;
                 }
-                Security securityMethod = sClass.getAnnotation(Security.class);
+                Security securityMethod = method.getAnnotation(Security.class);
+                String methodUrl = method.getAnnotation(LagouRequestMapping.class).value();
+                String url = baseUrl + methodUrl;
                 String[] methodValues = securityMethod.value();
+                securityMap.put(Pattern.compile(url), methodValues);
 
             }
         }
@@ -339,6 +347,10 @@ public class LgDispatcherServlet extends HttpServlet {
         if(handler == null) {
             resp.getWriter().write("404 not found");
             return;
+        }
+
+        if (!securityMap.isEmpty()) {
+            String requestURI = req.getRequestURI();
         }
 
         // 参数绑定
