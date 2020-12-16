@@ -351,6 +351,26 @@ public class LgDispatcherServlet extends HttpServlet {
 
         if (!securityMap.isEmpty()) {
             String requestURI = req.getRequestURI();
+            String username = req.getParameter("username");
+            for (Map.Entry<Pattern, String[]> patternEntry : securityMap.entrySet()) {
+                Pattern key = patternEntry.getKey();
+                Matcher matcher = key.matcher(requestURI);
+                if (!matcher.matches()) {
+                    continue;
+                }
+                String[] value = patternEntry.getValue();
+                boolean flag = false;
+                for (String s : value) {
+                    if (s.equals(username)) {
+                        flag = true;
+                        break;
+                    }
+                }
+                if (!flag) {
+                    resp.getWriter().write("do not have permission");
+                    return;
+                }
+            }
         }
 
         // 参数绑定
