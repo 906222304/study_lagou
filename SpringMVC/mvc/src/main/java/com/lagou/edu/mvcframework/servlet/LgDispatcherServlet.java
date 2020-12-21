@@ -91,7 +91,7 @@ public class LgDispatcherServlet extends HttpServlet {
             }
             Method[] methods = sClass.getMethods();
             for (Method method : methods) {
-                if (!method.isAnnotationPresent(Security.class) && !method.isAnnotationPresent(LagouRequestMapping.class)) {
+                if (!method.isAnnotationPresent(Security.class) || !method.isAnnotationPresent(LagouRequestMapping.class)) {
                     continue;
                 }
                 Security securityMethod = method.getAnnotation(Security.class);

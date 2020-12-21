@@ -10,4 +10,10 @@ public class DemoServiceImpl implements IDemoService {
         System.out.println("service 实现类中的name参数：" + name) ;
         return name;
     }
+
+    @Override
+    public String security(String s) {
+        System.out.println("成功访问：" + s);
+        return s;
+    }
 }
