@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<server>
+    <Service>
+        <Connector port="8080"/>
+        <Engine>
+            <Host name="localhost" appBase="/"/>
+        </Engine>
+    </Service>
+</server>
