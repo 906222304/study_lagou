@@ -1,16 +1,27 @@
 package com.lagou.server;
 
+import com.lagou.mapper.HostMapper;
 import org.dom4j.Document;
 import org.dom4j.DocumentException;
 import org.dom4j.Element;
-import org.dom4j.Node;
 import org.dom4j.io.SAXReader;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Objects;
+
 
 public class Bootstrap {
+
+    private String port;
+
+    public String getPort() {
+        return port;
+    }
+
+    public void setPort(String port) {
+        this.port = port;
+    }
 
     /**
      * MiniCat 程序启动入口
@@ -38,13 +49,26 @@ public class Bootstrap {
             // 获取端口号
             Element connector = (Element)rootDocument.selectSingleNode("//Connector");
             String port = connector.attributeValue("port");
+            this.setPort(port);
             // 获取host
             Element host = (Element)rootDocument.selectSingleNode("//Host");
+            // localhost
             String localhost = host.attributeValue("name");
+            // 创建host映射，封装localhost
+            HostMapper hostMapper = new HostMapper();
+            hostMapper.setHostName(localhost);
+            // 获取webapp路径
             String appBase = host.attributeValue("appBase");
+            // 通过webapps解析项目并存储
+            loadWebApps(appBase);
         } catch (IOException | DocumentException e) {
             e.printStackTrace();
         }
+    }
+
+    private void loadWebApps(String appBase) {
+        File file = new File(appBase);
+
     }
 
 }
