@@ -10,6 +10,13 @@ public class ContextMapper {
      */
     private String contextName;
 
+    public ContextMapper() {
+    }
+
+    public ContextMapper(String contextName) {
+        this.contextName = contextName;
+    }
+
     /**
      * 一个项目有多个请求url
      * 请求url 用来锁定servlet
