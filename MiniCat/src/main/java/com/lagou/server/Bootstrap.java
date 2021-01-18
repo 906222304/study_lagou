@@ -13,7 +13,7 @@ import org.dom4j.io.SAXReader;
 import java.io.*;
 import java.net.ServerSocket;
 import java.util.*;
-import java.util.stream.Collectors;
+
 
 
 public class Bootstrap {
@@ -51,6 +51,9 @@ public class Bootstrap {
         bootstrap.start();
     }
 
+    /**
+     * 开始监听端口，进行处理
+     */
     private void start() {
         try {
             ServerSocket serverSocket = new ServerSocket(Integer.parseInt(this.getPort()));
@@ -66,7 +69,39 @@ public class Bootstrap {
             String context = url.substring(0, url.substring(1).indexOf("/") + 1);
             //真正请求的url
             String realUrl = url.replace(context, "");
-        } catch (IOException e) {
+
+            ContextMapper contextMapper = null;
+
+            List<ContextMapper> contextMapperList = this.getEngineMapper().getHostMapper().getContextMapperList();
+
+            // 从上下文中获取WrapperMapper
+            for (ContextMapper mapper : contextMapperList) {
+                String contextName = mapper.getContextName();
+                if (context.equalsIgnoreCase("/" + contextName)) {
+                    contextMapper = mapper;
+                    break;
+                }
+            }
+            // 不存在返回404
+            if (contextMapper == null) {
+                response.output(HttpProtocolUtil.getHttpHeader404());
+                return;
+            }
+
+            List<WrapperMapper> wrapperMapperList = contextMapper.getWrapperMapperList();
+
+            for (WrapperMapper wrapperMapper : wrapperMapperList) {
+                // 根据url从mapper中获取处理的Object实例
+                if (realUrl.equals(wrapperMapper.getUrl())) {
+                    HttpServlet httpServlet = (HttpServlet) wrapperMapper.getObject();
+                    httpServlet.service(request, response);
+                    break;
+                }
+            }
+
+            serverSocket.close();
+
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
@@ -151,11 +186,11 @@ public class Bootstrap {
             try {
                 Class<?> aClass = miniCatClassLoader.findClass(classPath);
                 List<ContextMapper> contextMapperList = this.getEngineMapper().getHostMapper().getContextMapperList();
-                contextMapperList.forEach(contextMapper -> {
+                for (ContextMapper contextMapper : contextMapperList) {
                     if (webappName.equals(contextMapper.getContextName())) {
                         List<WrapperMapper> wrapperMapperList = contextMapper.getWrapperMapperList();
                         //判断当前类是否在web.xml配置的servlet class里面
-                        wrapperMapperList.forEach(wrapperMapper -> {
+                        for (WrapperMapper wrapperMapper : wrapperMapperList) {
                             if (classPath.replaceAll("/", ".").contains(wrapperMapper.getServletClassName())) {
                                 // 创建保存实例对象
                                 try {
@@ -164,9 +199,9 @@ public class Bootstrap {
                                     e.printStackTrace();
                                 }
                             }
-                        });
+                        }
                     }
-                });
+                }
             } catch (ClassNotFoundException e) {
                 e.printStackTrace();
             }
@@ -193,9 +228,12 @@ public class Bootstrap {
      */
     private void loadServlet(String webappName, String webappPath) {
         // 获取上下文
-        List<ContextMapper> contextMapper = this.engineMapper.getHostMapper().getContextMapperList().stream().filter(mapper -> {
-            return webappName.equals(mapper.getContextName());
-        }).collect(Collectors.toList());
+        List<ContextMapper> contextMapper = new ArrayList<>();
+        for (ContextMapper mapper : this.engineMapper.getHostMapper().getContextMapperList()) {
+            if (webappName.equals(mapper.getContextName())) {
+                contextMapper.add(mapper);
+            }
+        }
         // 存储url，以及servlet和请求url
         List<WrapperMapper> wrapperMapperList = new ArrayList<>();
 
