@@ -12,6 +12,7 @@ import org.dom4j.io.SAXReader;
 
 import java.io.*;
 import java.net.ServerSocket;
+import java.net.Socket;
 import java.util.*;
 
 
@@ -56,12 +57,14 @@ public class Bootstrap {
      */
     private void start() {
         try {
+
             ServerSocket serverSocket = new ServerSocket(Integer.parseInt(this.getPort()));
-            InputStream inputStream = serverSocket.accept().getInputStream();
+            Socket socket = serverSocket.accept();
+            InputStream inputStream = socket.getInputStream();
 
             // 封装Request对象和Response对象
             Request request = new Request(inputStream);
-            Response response = new Response(serverSocket.accept().getOutputStream());
+            Response response = new Response(socket.getOutputStream());
 
             //请求url
             String url = request.getUrl();
