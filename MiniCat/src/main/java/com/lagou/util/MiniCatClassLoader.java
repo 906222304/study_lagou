@@ -15,10 +15,15 @@ public class MiniCatClassLoader extends ClassLoader {
     public Class<?> findClass(String classPath) throws ClassNotFoundException {
         try (InputStream in = new FileInputStream(classPath)) {
             ByteArrayOutputStream out = new ByteArrayOutputStream();
-            int i = 0;
+            byte[] buffer = new byte[1024];
+            int size = 0;
+            while ((size = in.read(buffer)) != -1) {
+                out.write(buffer, 0, size);
+            }
+/*            int i = 0;
             while ((i = in.read()) != -1) {
                 out.write(i);
-            }
+            }*/
             byte[] byteArray = out.toByteArray();
             return defineClass(byteArray, 0, byteArray.length);
         } catch (Exception e) {

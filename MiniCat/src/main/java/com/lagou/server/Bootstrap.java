@@ -11,6 +11,8 @@ import org.dom4j.Element;
 import org.dom4j.io.SAXReader;
 
 import java.io.*;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.*;
@@ -59,50 +61,51 @@ public class Bootstrap {
         try {
 
             ServerSocket serverSocket = new ServerSocket(Integer.parseInt(this.getPort()));
-            Socket socket = serverSocket.accept();
-            InputStream inputStream = socket.getInputStream();
+            while (true) {
+                Socket socket = serverSocket.accept();
+                InputStream inputStream = socket.getInputStream();
 
-            // 封装Request对象和Response对象
-            Request request = new Request(inputStream);
-            Response response = new Response(socket.getOutputStream());
+                // 封装Request对象和Response对象
+                Request request = new Request(inputStream);
+                Response response = new Response(socket.getOutputStream());
 
-            //请求url
-            String url = request.getUrl();
-            //获取上下文
-            String context = url.substring(0, url.substring(1).indexOf("/") + 1);
-            //真正请求的url
-            String realUrl = url.replace(context, "");
+                //请求url
+                String url = request.getUrl();
+                //获取上下文
+                String context = url.substring(0, url.substring(1).indexOf("/") + 1);
+                //真正请求的url
+                String realUrl = url.replace(context, "");
 
-            ContextMapper contextMapper = null;
+                ContextMapper contextMapper = null;
 
-            List<ContextMapper> contextMapperList = this.getEngineMapper().getHostMapper().getContextMapperList();
+                List<ContextMapper> contextMapperList = this.getEngineMapper().getHostMapper().getContextMapperList();
 
-            // 从上下文中获取WrapperMapper
-            for (ContextMapper mapper : contextMapperList) {
-                String contextName = mapper.getContextName();
-                if (context.equalsIgnoreCase("/" + contextName)) {
-                    contextMapper = mapper;
-                    break;
+                // 从上下文中获取WrapperMapper
+                for (ContextMapper mapper : contextMapperList) {
+                    String contextName = mapper.getContextName();
+                    if (context.equalsIgnoreCase("/" + contextName)) {
+                        contextMapper = mapper;
+                        break;
+                    }
                 }
-            }
-            // 不存在返回404
-            if (contextMapper == null) {
-                response.output(HttpProtocolUtil.getHttpHeader404());
-                return;
-            }
-
-            List<WrapperMapper> wrapperMapperList = contextMapper.getWrapperMapperList();
-
-            for (WrapperMapper wrapperMapper : wrapperMapperList) {
-                // 根据url从mapper中获取处理的Object实例
-                if (realUrl.equals(wrapperMapper.getUrl())) {
-                    HttpServlet httpServlet = (HttpServlet) wrapperMapper.getObject();
-                    httpServlet.service(request, response);
-                    break;
+                // 不存在返回404
+                if (contextMapper == null) {
+                    response.output(HttpProtocolUtil.getHttpHeader404());
+                    return;
                 }
-            }
 
-            serverSocket.close();
+                List<WrapperMapper> wrapperMapperList = contextMapper.getWrapperMapperList();
+
+                for (WrapperMapper wrapperMapper : wrapperMapperList) {
+                    // 根据url从mapper中获取处理的Object实例
+                    if (realUrl.equals(wrapperMapper.getUrl())) {
+                        HttpServlet httpServlet = (HttpServlet) wrapperMapper.getObject();
+                        httpServlet.service(request, response);
+                        break;
+                    }
+                }
+                socket.close();
+            }
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -184,9 +187,10 @@ public class Bootstrap {
             String webappName = entry.getKey();
             String classPath = entry.getValue();
 
-            // 加载class，实例化
+            // 加载class，实例化(需使用自定义的类加载器)
             MiniCatClassLoader miniCatClassLoader = new MiniCatClassLoader();
             try {
+                // 传入路径，根据自定义类加载器创建class
                 Class<?> aClass = miniCatClassLoader.findClass(classPath);
                 List<ContextMapper> contextMapperList = this.getEngineMapper().getHostMapper().getContextMapperList();
                 for (ContextMapper contextMapper : contextMapperList) {
@@ -194,11 +198,11 @@ public class Bootstrap {
                         List<WrapperMapper> wrapperMapperList = contextMapper.getWrapperMapperList();
                         //判断当前类是否在web.xml配置的servlet class里面
                         for (WrapperMapper wrapperMapper : wrapperMapperList) {
-                            if (classPath.replaceAll("/", ".").contains(wrapperMapper.getServletClassName())) {
+                            if (classPath.replaceAll("\\\\", ".").contains(wrapperMapper.getServletClassName())) {
                                 // 创建保存实例对象
                                 try {
-                                    wrapperMapper.setObject(aClass.newInstance());
-                                } catch (InstantiationException | IllegalAccessException e) {
+                                    wrapperMapper.setObject(aClass.getDeclaredConstructor().newInstance());
+                                } catch (Exception e) {
                                     e.printStackTrace();
                                 }
                             }
